@@ -47,7 +47,7 @@ class AdjacentStreetViewPanoramas {
         let headings: number[] = []
         for (let i=0; i<4; i++) {
             let heading: number
-            if (i=0) {
+            if (i == 0) {
                 heading = startHeading
             } else {
                 heading = this.heading(startHeading + (90*i))
