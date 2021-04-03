@@ -11,10 +11,12 @@ Input
 * `[adjacentPanoramas1, adjacentPanoramas2]` - `google.maps.StreetViewPanorama[]` that represents that Street View Panoramas to be configured
 
 Output
-{\
-&nbsp;&nbsp;&nbsp;&nbsp;panoramas: `google.maps.StreetViewPanorama[]`,\
-&nbsp;&nbsp;&nbsp;&nbsp;count: `number` of panoramas that were configured\
+```
+{
+  panoramas: _an array of Street View Panoramas_,
+  count: _number of panoramas that were configured_
 }
+```
 
 
 ## Installation

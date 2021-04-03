@@ -175,7 +175,7 @@ class AdjacentStreetViewPanoramas {
                     }
                 }
     
-                 // Set position (i.e., geocodes) of link 
+                // Set position (i.e., geocodes) of link 
                 let linkPoint: google.maps.LatLng | null | undefined
                 if (linkPoint == null) continue  // check if null or undefined
                 const streetViewService = new google.maps.StreetViewService()
