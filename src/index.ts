@@ -58,8 +58,9 @@ class AdjacentStreetViewPanoramas {
     }
 
     private points(pPoint: google.maps.LatLng, distance: number, headings: number[]): google.maps.LatLng[] {
+        const maxPoints = 4 
         let points: google.maps.LatLng[] = []
-        for (let i=0; i<4; i++) {
+        for (let i=0; i<maxPoints; i++) {
             const point: google.maps.LatLng = google.maps.geometry.spherical.computeOffset(pPoint, distance * 2, headings[i])
             points.push(point)
         }
