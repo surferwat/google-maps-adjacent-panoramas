@@ -1,13 +1,13 @@
 ## Description
 
-Google Maps API implementation that determines the panoramas (max 2) that are adjacent to a subject panorama and selects only those that are located in the relevant area which depends on the subject panorama's orientation (i.e., whether it is to the left of, in front of, or right of) to an origin point. 
+Google Maps API implementation that determines the panoramas (max 2) that are adjacent to a subject panorama and selects only those that are located in the relevant area which depends on the subject panorama's orientation (i.e., whether it is to the left of, in front of, or right of) to the map center point. 
 
-So, if the subject panorama is to the left of the origin point, then two adjacent panoramas (if they are found) that are to the right of the subject panorama would be returned. If the subject panorama is in front of the origin point, then one adjacent panorama to the left of and one to the right of the subject panorama would be returned.
+So, if the subject panorama is to the left of the map center point, then two adjacent panoramas (if they are found) that are to the right of the subject panorama would be returned. If the subject panorama is in front of the map center point, then one adjacent panorama to the left of and one to the right of the subject panorama would be returned.
 
 Input
-* `origin` - `google.map.LatLng` that represents the geocodes for the point of interest
-* `panorama` - `google.map.StreetViewPanorama` that represents the Street View Panorama facing the origin 
-* `panoramaOrientation` - string enum (LEFT, CENTER, RIGHT) that represents the relative orientation of the panorama to the origin
+* `mapCenter` - `google.map.LatLng` that represents the geocodes for the center point of the map
+* `panorama` - `google.map.StreetViewPanorama` that represents the Street View Panorama facing the map center
+* `panoramaOrientation` - string enum (LEFTOF, FRONTOF, RIGHTOF) that represents the relative orientation of the panorama to the map center
 * `[adjacentPanoramas1, adjacentPanoramas2]` - `google.maps.StreetViewPanorama[]` that represents that Street View Panoramas to be configured
 
 Output
@@ -51,7 +51,7 @@ npm install /file/path/to/module
 import { AdjacentStreetViewPanoramas } from 'google-maps-adjacent-panoramas'
 
 
-const origin = { lat: 20.91592625, lng: -156.3812449 } 
+const mapCenter = { lat: 20.91592625, lng: -156.3812449 } 
 const panorama = new google.maps.StreetViewPanorama(
     document.getElementById('pano-0')
 )
@@ -79,7 +79,7 @@ const sv = new google.maps.StreetViewService()
 sv.getPanorama({ location: origin, radius: 50 }, processSVData)
 
 const adjacentStreetViewPanoramas = new AdjacentStreetViewPanoramas(
-    origin, 
+    mapCenter, 
     panorama, 
     panoramaOrientation,
     [adjacentPanorama1, adjacentPanorama2]

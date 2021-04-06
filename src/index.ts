@@ -1,9 +1,9 @@
 const NUMBER_OF_ADJACENT_PANORAMAS = 2 // must be an even number
 
 enum PanoramaOrientation {
-    Left = 'LEFT',
-    Center = 'CENTER',
-    Right = 'RIGHT'
+    LeftOf = 'LEFTOF',
+    FrontOf = 'FRONTOF',
+    RightOf = 'RIGHTOF'
 }
 
 type Result = {
@@ -13,18 +13,18 @@ type Result = {
 
 
 class AdjacentStreetViewPanoramas {
-    private _originPoint: google.maps.LatLng
+    private _mapCenterPoint: google.maps.LatLng
     private _subjectStreetViewPanorama: google.maps.StreetViewPanorama
-    private _subjectStreetViewPanoramaOrientation: PanoramaOrientation = PanoramaOrientation.Center // default is _CENTER_
+    private _subjectStreetViewPanoramaOrientation: PanoramaOrientation = PanoramaOrientation.FrontOf // default is _FrontOf_
     private _adjacentStreetViewPanoramas: google.maps.StreetViewPanorama[]
 
     constructor(
-        initOriginPoint: google.maps.LatLng, 
+        initMapCenterPoint: google.maps.LatLng, 
         initSubjectStreetViewPanorama: google.maps.StreetViewPanorama, 
         initSubjectStreetViewPanoramaOrientation: PanoramaOrientation,
         initAdjacentStreetViewPanoramas: google.maps.StreetViewPanorama[] 
     ) {
-        this._originPoint = initOriginPoint,
+        this._mapCenterPoint = initMapCenterPoint,
         this._subjectStreetViewPanorama = initSubjectStreetViewPanorama,
         this._subjectStreetViewPanoramaOrientation = initSubjectStreetViewPanoramaOrientation,
         this._adjacentStreetViewPanoramas = initAdjacentStreetViewPanoramas
@@ -44,8 +44,9 @@ class AdjacentStreetViewPanoramas {
             ? referenceHeading + 45 
             : referenceHeading
         
+        const maxHeadings = 4
         let headings: number[] = []
-        for (let i=0; i<4; i++) {
+        for (let i=0; i<maxHeadings; i++) {
             let heading: number
             if (i == 0) {
                 heading = startHeading
@@ -123,13 +124,13 @@ class AdjacentStreetViewPanoramas {
                 throw new Error('Street View LatLng not found for this panorama')
             }
 
-            /// We need to determine the area that represents the right, back, left, or front area for a given 
-            /// point in a 2D plane. We do this by figuring out each pair of scalars that represent the sides
-            /// for a given area.
+            //// We need to determine the area that represents the right, back, left, or front area for a given 
+            //// point in a 2D plane. We do this by figuring out each pair of scalars that represent the sides
+            //// for a given area.
 
-            const distanceBetweenPPointAndOPoint: number = google.maps.geometry.spherical.computeDistanceBetween(pPoint, this._originPoint)
-            const pPointToOriginPointHeading: number = google.maps.geometry.spherical.computeHeading(pPoint, this._originPoint)
-            const headings: number[] = this.headings(pPointToOriginPointHeading)
+            const distanceBetweenPPointAndOPoint: number = google.maps.geometry.spherical.computeDistanceBetween(pPoint, this._mapCenterPoint)
+            const pPointToMapCenterPointHeading: number = google.maps.geometry.spherical.computeHeading(pPoint, this._mapCenterPoint)
+            const headings: number[] = this.headings(pPointToMapCenterPointHeading)
             const points: google.maps.LatLng[] = this.points(pPoint, distanceBetweenPPointAndOPoint, headings)
             const scalars: number[][] = this.scalars(pPoint, points)
     
@@ -140,11 +141,11 @@ class AdjacentStreetViewPanoramas {
                 front: [scalars[3], scalars[0]]
             }
             
-            /// We then loop through each of the links (i.e., the adjacent panoramas) searching for the link 
-            /// for the panorama that is located in the target area (e.g., if the orientation of the subject panorama 
-            /// is on the left-hand side of an origin point, then our target area would be represented by the area 
-            /// to the right of the subject panorama). Each panorama may have up to four links (this is an assumption) for
-            /// each of the possible directions that one can move from a given panorama (i.e., right, backward, left, forward).
+            //// We then loop through each of the links (i.e., the adjacent panoramas) searching for the link 
+            //// for the panorama that is located in the target area (e.g., if the orientation of the subject panorama 
+            //// is on the left-hand side of a map center point, then our target area would be represented by the area 
+            //// to the right of the subject panorama). Each panorama may have up to four links (this is an assumption) for
+            //// each of the possible directions that one can move from a given panorama (i.e., right, backward, left, forward).
 
             let panoramaConfigured: boolean = false
             for (let j=0; j<links.length; j++) {
@@ -190,7 +191,7 @@ class AdjacentStreetViewPanoramas {
                 // Check whether link point is located in the target area
                 let targetLinkFound: boolean = false
                 switch (true) { 
-                    case this._subjectStreetViewPanoramaOrientation == 'LEFT':
+                    case this._subjectStreetViewPanoramaOrientation == 'LEFTOF':
                         if (this.isInArea(areaScalars.right, pLVector)) {
                             const link: google.maps.StreetViewLink | null = links![j]
                             const streetViewPanoRequest: google.maps.StreetViewPanoRequest | null = link != null ? link.pano as google.maps.StreetViewPanoRequest : null
@@ -198,7 +199,7 @@ class AdjacentStreetViewPanoramas {
                             targetLinkFound = true
                         }
                         break 
-                    case this._subjectStreetViewPanoramaOrientation == 'RIGHT':
+                    case this._subjectStreetViewPanoramaOrientation == 'RIGHTOF':
                         if (this.isInArea(areaScalars.left, pLVector)) {
                             const link: google.maps.StreetViewLink | null = links![j]
                             const streetViewPanoRequest: google.maps.StreetViewPanoRequest | null = link != null ? link.pano as google.maps.StreetViewPanoRequest : null
@@ -206,7 +207,7 @@ class AdjacentStreetViewPanoramas {
                             targetLinkFound = true 
                         }
                         break
-                    case this._subjectStreetViewPanoramaOrientation == 'CENTER':
+                    case this._subjectStreetViewPanoramaOrientation == 'FRONTOF':
                         // Check left area for first, then check right area second
                         if (j < NUMBER_OF_ADJACENT_PANORAMAS/2) {
                             if (this.isInArea(areaScalars.left, pLVector)) {
