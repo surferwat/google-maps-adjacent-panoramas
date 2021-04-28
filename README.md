@@ -50,7 +50,6 @@ npm install /file/path/to/module
 ```javascript
 import { AdjacentStreetViewPanoramas } from 'google-maps-adjacent-panoramas'
 
-
 const mapCenter = { lat: 20.91592625, lng: -156.3812449 } 
 const panorama = new google.maps.StreetViewPanorama(
     document.getElementById('pano-0')

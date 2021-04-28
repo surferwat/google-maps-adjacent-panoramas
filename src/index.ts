@@ -11,7 +11,6 @@ type Result = {
     count: number
 }
 
-
 class AdjacentStreetViewPanoramas {
     private _mapCenterPoint: google.maps.LatLng
     private _subjectStreetViewPanorama: google.maps.StreetViewPanorama
@@ -81,7 +80,7 @@ class AdjacentStreetViewPanoramas {
             let scalar: number[] = this.scalar(startPoint, endPoints[i])
             scalars.push(scalar)
         }
-        return scalars // [pAVector, pBVector, pCVector, pDVector]
+        return scalars // [pAScalar, pBScalar, pCScalar, pDScalar]
     }
 
     private scalarProduct(scalar1: number[], scalar2: number[], size: number): number {
@@ -185,14 +184,14 @@ class AdjacentStreetViewPanoramas {
                 const streetViewPanoRequest: google.maps.StreetViewPanoRequest | null = link != null ? link.pano as google.maps.StreetViewPanoRequest : null
                 if (streetViewPanoRequest != null) streetViewService.getPanorama(streetViewPanoRequest, setLinkPointCallBack)
     
-                // Set vector for panorama point and link point
-                const pLVector: number[] = this.scalar(pPoint, linkPoint)
+                // Set scalar for panorama point and link point
+                const pLScalar: number[] = this.scalar(pPoint, linkPoint)
                 
                 // Check whether link point is located in the target area
                 let targetLinkFound: boolean = false
                 switch (true) { 
                     case this._subjectStreetViewPanoramaOrientation == 'LEFTOF':
-                        if (this.isInArea(areaScalars.right, pLVector)) {
+                        if (this.isInArea(areaScalars.right, pLScalar)) {
                             const link: google.maps.StreetViewLink | null = links![j]
                             const streetViewPanoRequest: google.maps.StreetViewPanoRequest | null = link != null ? link.pano as google.maps.StreetViewPanoRequest : null
                             if (streetViewPanoRequest != null) streetViewService.getPanorama(streetViewPanoRequest, setAdjacentPanoramaCallBack)
@@ -200,7 +199,7 @@ class AdjacentStreetViewPanoramas {
                         }
                         break 
                     case this._subjectStreetViewPanoramaOrientation == 'RIGHTOF':
-                        if (this.isInArea(areaScalars.left, pLVector)) {
+                        if (this.isInArea(areaScalars.left, pLScalar)) {
                             const link: google.maps.StreetViewLink | null = links![j]
                             const streetViewPanoRequest: google.maps.StreetViewPanoRequest | null = link != null ? link.pano as google.maps.StreetViewPanoRequest : null
                             if (streetViewPanoRequest != null) streetViewService.getPanorama(streetViewPanoRequest, setAdjacentPanoramaCallBack)
@@ -210,7 +209,7 @@ class AdjacentStreetViewPanoramas {
                     case this._subjectStreetViewPanoramaOrientation == 'FRONTOF':
                         // Check left area for first, then check right area second
                         if (j < NUMBER_OF_ADJACENT_PANORAMAS/2) {
-                            if (this.isInArea(areaScalars.left, pLVector)) {
+                            if (this.isInArea(areaScalars.left, pLScalar)) {
                                 const link: google.maps.StreetViewLink | null = links![j]
                                 const streetViewPanoRequest: google.maps.StreetViewPanoRequest | null = link != null ? link.pano as google.maps.StreetViewPanoRequest : null
                                 if (streetViewPanoRequest != null) streetViewService.getPanorama(streetViewPanoRequest, setAdjacentPanoramaCallBack)
@@ -219,7 +218,7 @@ class AdjacentStreetViewPanoramas {
                                 break
                             }
                         } else {
-                            if (this.isInArea(areaScalars.right, pLVector)) {
+                            if (this.isInArea(areaScalars.right, pLScalar)) {
                                 const link: google.maps.StreetViewLink | null = links![j]
                                 const streetViewPanoRequest: google.maps.StreetViewPanoRequest | null = link != null ? link.pano as google.maps.StreetViewPanoRequest : null
                                 if (streetViewPanoRequest != null) streetViewService.getPanorama(streetViewPanoRequest, setAdjacentPanoramaCallBack)
@@ -246,6 +245,5 @@ class AdjacentStreetViewPanoramas {
         }
     }
 }
-
 
 export { AdjacentStreetViewPanoramas }
