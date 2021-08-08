@@ -1,249 +1,146 @@
-const NUMBER_OF_ADJACENT_PANORAMAS = 2 // must be an even number
+/*
+Determines the adjacent panoramas that are to the left and to the right 
+of a given panorama.
 
-enum PanoramaOrientation {
-    LeftOf = 'LEFTOF',
-    FrontOf = 'FRONTOF',
-    RightOf = 'RIGHTOF'
-}
+Each Google Streetview Panorama object has a property named links, which 
+is an array of link objects. The array could have min 0 or max 4 link 
+objects with each representing the details for an adjacent panorama that 
+is either in front of, to the right of, to the back of, or to the left of 
+the active panorama.
 
-type Result = {
-    panoramas: google.maps.StreetViewPanorama[],
-    count: number
-}
+The link object has three properties named id, heading, and description. 
+The heading property is a number that represents the direction in degrees
+to the location (i.e., coordinates) of the adjacent panorama. With this 
+heading, we can ascertain the location of the adjacent panorama relative 
+to the active panorama.
 
-class AdjacentStreetViewPanoramas {
-    private _mapCenterPoint: google.maps.LatLng
-    private _subjectStreetViewPanorama: google.maps.StreetViewPanorama
-    private _subjectStreetViewPanoramaOrientation: PanoramaOrientation = PanoramaOrientation.FrontOf // default is _FrontOf_
-    private _adjacentStreetViewPanoramas: google.maps.StreetViewPanorama[]
+We first compute the heading from the location of the active panorama to 
+the location of the map center. We label this heading as the active heading. 
+We then use the active heading to compute the headings that will make 
+up the parameters that correspond to the different positions.We compute 
+these parameter headings such that: 
+    parameterHeadings[0] == activeHeading + 45, 
+    parametersHeadings[1] == parametersHeadings[0] + 90 * [1],
+    parametersHeadings[2] == parametersHeadings[0] + 90 * [2],
+    parametersHeadings[3] == parametersHeadings[0] + 90 * [3]
+
+We then take two parameter headings to create a range of headings that 
+correspond to the directions where we can find adjacent panoramas 
+that are either to the front of, to the right of, to the back of, or to
+the left of the active panorama. The following reprsents each of these 
+pairs:
+    parameterHeadings[0] and parameterHeadings[1] == _right of_ 
+    parameterHeadings[1] and parameterHeadings[2] == _back of_ 
+    parameterHeadings[0] and parameterHeadings[1] == _left of_ 
+    parameterHeadings[0] and parameterHeadings[1] == _front of_
+
+Sample return value:
+    ["3baTzNhez12RsODEVyemAw", "NCuwqL9TEnxeVrH0qcezfQ"]
+*/
+
+const MAX_NUM_HEADINGS = 4
+
+class AdjacentStreetViewPanoramaLocations {
+    private _mapCenterPoint: google.maps.LatLng 
+    private _activePanoramaPoint: google.maps.LatLng 
+    private _adjacentPanoramaPanos: (string | null)[] = [] // [0] == left side panorama and [1] == right side
 
     constructor(
         initMapCenterPoint: google.maps.LatLng, 
-        initSubjectStreetViewPanorama: google.maps.StreetViewPanorama, 
-        initSubjectStreetViewPanoramaOrientation: PanoramaOrientation,
-        initAdjacentStreetViewPanoramas: google.maps.StreetViewPanorama[] 
+        initActivePanoramaPoint: google.maps.LatLng, 
     ) {
         this._mapCenterPoint = initMapCenterPoint,
-        this._subjectStreetViewPanorama = initSubjectStreetViewPanorama,
-        this._subjectStreetViewPanoramaOrientation = initSubjectStreetViewPanoramaOrientation,
-        this._adjacentStreetViewPanoramas = initAdjacentStreetViewPanoramas
+        this._activePanoramaPoint = initActivePanoramaPoint
     }
 
-    private heading(heading: number): number {
-        let x: number = heading
-        if (x > 180) {
-            if (x < 0) x = 180 - Math.abs(x)%180
-            if (x > 0) x = Math.abs(x)%180 - 180
-        }
-        return x
+    // Compute heading from panorama point to map center point 
+    private activeHeading() {
+        return google.maps.geometry.spherical.computeHeading(this._activePanoramaPoint, this._mapCenterPoint)
     }
 
-    private headings(referenceHeading: number): number[] {
-        const startHeading: number = referenceHeading%90 
-            ? referenceHeading + 45 
-            : referenceHeading
+    // Compute parameter headings
+    private parameterHeadings(activeHeading: number) {
+        let parameterHeadings: number[] = []
         
-        const maxHeadings = 4
-        let headings: number[] = []
-        for (let i=0; i<maxHeadings; i++) {
-            let heading: number
+        let heading = 0
+        for (let i = 0; i < MAX_NUM_HEADINGS; i++) {
             if (i == 0) {
-                heading = startHeading
+                heading = (activeHeading + 45) % 360
             } else {
-                heading = this.heading(startHeading + (90*i))
+                heading = (heading + 90) % 360
             }
-            headings.push(heading)
+            parameterHeadings.push(heading)
         }
-        return headings // [aHeading, bHeading, cHeading, dHeading]
+        return parameterHeadings
     }
 
-    private points(pPoint: google.maps.LatLng, distance: number, headings: number[]): google.maps.LatLng[] {
-        const maxPoints = 4 
-        let points: google.maps.LatLng[] = []
-        for (let i=0; i<maxPoints; i++) {
-            const point: google.maps.LatLng = google.maps.geometry.spherical.computeOffset(pPoint, distance * 2, headings[i])
-            points.push(point)
+    // Convert heading to a number that is between 0 to 360 degrees
+    private zeroTo360(heading: number) {
+        return heading < 0 ? heading + 360 : heading
+    }
+
+    // Checks for adjacent panoramas that are to the left of active panoarama
+    private isLeftLink(heading: number, parameterHeadings: number[]) {
+        if ((parameterHeadings[2] + 90) > 360) {
+            return (heading > parameterHeadings[2] && heading <= 360 
+                || (heading >= 0 && heading < (parameterHeadings[2] + 90) % 360))
         }
-        return points // [aPoint, bPoint, cPoint, dPoint]
+        return (heading > parameterHeadings[2] && heading < parameterHeadings[2] + 90)
     }
 
-    private scalar(startPoint: google.maps.LatLng, endPoint: google.maps.LatLng): number[] {
-        return [
-            endPoint.lng() - startPoint.lng(), 
-            endPoint.lat() - startPoint.lat() 
-        ]
-    }
-
-    private scalars(startPoint: google.maps.LatLng, endPoints: google.maps.LatLng[]): number[][] {
-        let scalars: number[][] = []
-        for (let i=0; i<endPoints.length; i++) {
-            let scalar: number[] = this.scalar(startPoint, endPoints[i])
-            scalars.push(scalar)
+    // Checks for adjacent panoramas that are to the right of active panoarama
+    private isRightLink(heading: number, parameterHeadings: number[]) {
+        if ((parameterHeadings[0] + 90) > 360) {
+            return (heading > parameterHeadings[0] && heading <= 360 
+                || (heading >= 0 && heading < (parameterHeadings[0] + 90) % 360))
         }
-        return scalars // [pAScalar, pBScalar, pCScalar, pDScalar]
+        return (heading > parameterHeadings[0] && (heading < parameterHeadings[0] + 90))
     }
 
-    private scalarProduct(scalar1: number[], scalar2: number[], size: number): number {
-        let sp: number = 0
-        for (let i = 0; i < size; i++) {
-            sp =+ scalar1[i] * scalar2[i]
-        }
-        return sp
-    }
-
-    private isInArea(area: number[][], newScalar: number[]): boolean {
-        let locatedInArea: boolean = false 
-        if (this.scalarProduct(area[0], newScalar, 2) > 0 && this.scalarProduct(area[1], newScalar, 2) > 0) {
-            locatedInArea = true
-        }
-        return locatedInArea
-    }
-
-    /**
-     * Updates each Street View Panorama object with the pano ID for a panorama adjacent to the subject panorama. 
-     * Adjacent means on the left- and/or right-hand side of the subject panorama depending on the orientation of the subject panorama).
-     */
-
-    configureAdjacentPanoramas(): Result {
-        let activePanorama: google.maps.StreetViewPanorama = this._subjectStreetViewPanorama
-        let count: number = 0 // keep track of number of panoramas configured
-
-        for(let i=0; i<NUMBER_OF_ADJACENT_PANORAMAS; i++) {
-            
-            const links: (google.maps.StreetViewLink | null)[] | null = activePanorama.getLinks()
-            
-            if (links == null) { 
-                throw new Error('Street View Links not found for this panorama')
-            } // non-null assertion used with _links_ below because we know links are not null by this line
-            
-
-            const pPoint: google.maps.LatLng | null = activePanorama.getPosition()
-
-            if (pPoint == null) {
-                throw new Error('Street View LatLng not found for this panorama')
-            }
-
-            //// We need to determine the area that represents the right, back, left, or front area for a given 
-            //// point in a 2D plane. We do this by figuring out each pair of scalars that represent the sides
-            //// for a given area.
-
-            const distanceBetweenPPointAndOPoint: number = google.maps.geometry.spherical.computeDistanceBetween(pPoint, this._mapCenterPoint)
-            const pPointToMapCenterPointHeading: number = google.maps.geometry.spherical.computeHeading(pPoint, this._mapCenterPoint)
-            const headings: number[] = this.headings(pPointToMapCenterPointHeading)
-            const points: google.maps.LatLng[] = this.points(pPoint, distanceBetweenPPointAndOPoint, headings)
-            const scalars: number[][] = this.scalars(pPoint, points)
+    // Get panos for adjacent panoramas 
+    async getLocations(): Promise<(string | null)[]> {
+        let activePoint = this._activePanoramaPoint
+        let links: (google.maps.StreetViewLink | undefined)[] | undefined
     
-            const areaScalars = {
-                right: [scalars[0], scalars[1]],
-                back: [scalars[1], scalars[2]],
-                left: [scalars[2], scalars[3]],
-                front: [scalars[3], scalars[0]]
-            }
+        const streetViewService = new google.maps.StreetViewService()
+        const request = {
+            location: {lat: activePoint.lat(), lng: activePoint.lng()},
+            radius: 100,
+            source: google.maps.StreetViewSource.OUTDOOR
+        }
+        const result = await streetViewService.getPanorama(request)
             
-            //// We then loop through each of the links (i.e., the adjacent panoramas) searching for the link 
-            //// for the panorama that is located in the target area (e.g., if the orientation of the subject panorama 
-            //// is on the left-hand side of a map center point, then our target area would be represented by the area 
-            //// to the right of the subject panorama). Each panorama may have up to four links (this is an assumption) for
-            //// each of the possible directions that one can move from a given panorama (i.e., right, backward, left, forward).
-
-            let panoramaConfigured: boolean = false
-            for (let j=0; j<links.length; j++) {
-                
-                function setLinkPointCallBack(
-                    data: google.maps.StreetViewPanoramaData | null, 
-                    status: google.maps.StreetViewStatus
-                ): void {
-                    if (status === 'OK') {
-                        const location = data ? data.location : null
-                        linkPoint = location ? location.latLng : null
-                    } else {
-                        console.warn('Street View data not found for this location; moving to next iteration, if any')
-                    }
-                }
-    
-                function setAdjacentPanoramaCallBack(
-                    data: google.maps.StreetViewPanoramaData | null, 
-                    status: google.maps.StreetViewStatus,
-                ): void {
-                    if (status === 'OK') {
-                        const link: google.maps.StreetViewLink | null = links![j]
-                        const pano: string | null = link != null ? link.pano : null
-                        if (pano != null) this._adjacentStreetViewPanoramas[i].setPano(pano)
-                        panoramaConfigured = true
-                        count++
-                    } else {
-                        console.warn('Street View data not found for this location; panorama in this iteration has not been updated')
-                    }
-                }
-    
-                // Set position (i.e., geocodes) of link 
-                let linkPoint: google.maps.LatLng | null | undefined
-                if (linkPoint == null) continue  // check if null or undefined
-                const streetViewService = new google.maps.StreetViewService()
-                const link: google.maps.StreetViewLink | null = links![j]
-                const streetViewPanoRequest: google.maps.StreetViewPanoRequest | null = link != null ? link.pano as google.maps.StreetViewPanoRequest : null
-                if (streetViewPanoRequest != null) streetViewService.getPanorama(streetViewPanoRequest, setLinkPointCallBack)
-    
-                // Set scalar for panorama point and link point
-                const pLScalar: number[] = this.scalar(pPoint, linkPoint)
-                
-                // Check whether link point is located in the target area
-                let targetLinkFound: boolean = false
-                switch (true) { 
-                    case this._subjectStreetViewPanoramaOrientation == 'LEFTOF':
-                        if (this.isInArea(areaScalars.right, pLScalar)) {
-                            const link: google.maps.StreetViewLink | null = links![j]
-                            const streetViewPanoRequest: google.maps.StreetViewPanoRequest | null = link != null ? link.pano as google.maps.StreetViewPanoRequest : null
-                            if (streetViewPanoRequest != null) streetViewService.getPanorama(streetViewPanoRequest, setAdjacentPanoramaCallBack)
-                            targetLinkFound = true
-                        }
-                        break 
-                    case this._subjectStreetViewPanoramaOrientation == 'RIGHTOF':
-                        if (this.isInArea(areaScalars.left, pLScalar)) {
-                            const link: google.maps.StreetViewLink | null = links![j]
-                            const streetViewPanoRequest: google.maps.StreetViewPanoRequest | null = link != null ? link.pano as google.maps.StreetViewPanoRequest : null
-                            if (streetViewPanoRequest != null) streetViewService.getPanorama(streetViewPanoRequest, setAdjacentPanoramaCallBack)
-                            targetLinkFound = true 
-                        }
-                        break
-                    case this._subjectStreetViewPanoramaOrientation == 'FRONTOF':
-                        // Check left area for first, then check right area second
-                        if (j < NUMBER_OF_ADJACENT_PANORAMAS/2) {
-                            if (this.isInArea(areaScalars.left, pLScalar)) {
-                                const link: google.maps.StreetViewLink | null = links![j]
-                                const streetViewPanoRequest: google.maps.StreetViewPanoRequest | null = link != null ? link.pano as google.maps.StreetViewPanoRequest : null
-                                if (streetViewPanoRequest != null) streetViewService.getPanorama(streetViewPanoRequest, setAdjacentPanoramaCallBack)
-                                targetLinkFound = true
-                            } else {
-                                break
-                            }
-                        } else {
-                            if (this.isInArea(areaScalars.right, pLScalar)) {
-                                const link: google.maps.StreetViewLink | null = links![j]
-                                const streetViewPanoRequest: google.maps.StreetViewPanoRequest | null = link != null ? link.pano as google.maps.StreetViewPanoRequest : null
-                                if (streetViewPanoRequest != null) streetViewService.getPanorama(streetViewPanoRequest, setAdjacentPanoramaCallBack)
-                                targetLinkFound = true
-                            } else {
-                                break
-                            }
-                        }
-                        break
-                    default:
-                        throw new Error('invalid orientation')
-                }
-
-                if (targetLinkFound) break
-            }
-
-            if (!panoramaConfigured) break 
-            activePanorama = this._adjacentStreetViewPanoramas[i]
+        if (result == null) {
+            return this._adjacentPanoramaPanos
+        }
+            
+        links = result.data.links
+            
+        if (links == null) { 
+            throw new Error('Street View Links not found for this panorama')
         }
 
-        return {
-            panoramas: this._adjacentStreetViewPanoramas,
-            count: count
+        const activeHeading = this.activeHeading()
+        const parameterHeadings = this.parameterHeadings(activeHeading)
+        
+        for (let i = 0; i < links.length; i++) {
+           if (links[i] == null) {
+               continue
+           }
+
+           if (links[i]!.heading == null) {
+               continue
+           }
+        
+           if (this.isLeftLink(this.zeroTo360(links[i]!.heading!), parameterHeadings)) {
+               this._adjacentPanoramaPanos[0] = links[i]!.pano
+           } else if (this.isRightLink(this.zeroTo360(links[i]!.heading!), parameterHeadings)) {
+               this._adjacentPanoramaPanos[1] = links[i]!.pano
+           }
         }
+
+        return this._adjacentPanoramaPanos
     }
 }
 
-export { AdjacentStreetViewPanoramas }
+export { AdjacentStreetViewPanoramaLocations }

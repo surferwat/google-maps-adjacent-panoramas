@@ -1,7 +1,7 @@
 {
   "name": "google-maps-adjacent-panoramas",
   "private": false,
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Determines the panoramas (max 2) that are adjacent to a subject panorama using the Google Maps API",
   "main": "build/index.js",
   "types": "build/index.d.ts",

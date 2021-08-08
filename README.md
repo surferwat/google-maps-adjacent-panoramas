@@ -1,23 +1,21 @@
 ## Description
 
-Google Maps API implementation that determines the panoramas (max 2) that are adjacent to a subject panorama and selects only those that are located in the relevant area which depends on the subject panorama's orientation (i.e., whether it is to the left of, in front of, or right of) to the map center point. 
-
-So, if the subject panorama is to the left of the map center point, then two adjacent panoramas (if they are found) that are to the right of the subject panorama would be returned. If the subject panorama is in front of the map center point, then one adjacent panorama to the left of and one to the right of the subject panorama would be returned.
+Determines the adjacent panoramas that are to the left and to the right 
+of a given panorama. Returns an array of string values for the pano ids of
+the adjacent panoramas.
 
 Input
-* `mapCenter` - `google.map.LatLng` that represents the geocodes for the center point of the map
-* `panorama` - `google.map.StreetViewPanorama` that represents the Street View Panorama facing the map center
-* `panoramaOrientation` - string enum (LEFTOF, FRONTOF, RIGHTOF) that represents the relative orientation of the panorama to the map center
-* `[adjacentPanoramas1, adjacentPanoramas2]` - `google.maps.StreetViewPanorama[]` that represents that Street View Panoramas to be configured
+* `mapCenterPoint` - `google.map.LatLng` that represents the geocodes for the center point of the map
+* `activePanoramaPoint` - `google.map.LatLng` that represents the active Street View Panorama facing the map center
 
 Output
 ```
-{
-  panoramas: _an array of Street View Panoramas_,
-  count: _number of panoramas that were configured_
-}
-```
+["3baTzNhez12RsODEVyemAw", "NCuwqL9TEnxeVrH0qcezfQ"]
 
+```
+## Demo
+
+* [hiirez](http://www.hiirez.com/)
 
 ## Installation
 
@@ -36,7 +34,7 @@ npm install
 
 Step 3: Build 
 ```
-npm run-script build:clean
+npm run-script build
 ```
 
 Step 4: Go to app folder and install the module
@@ -49,44 +47,27 @@ npm install /file/path/to/module
 
 ```javascript
 import { AdjacentStreetViewPanoramas } from 'google-maps-adjacent-panoramas'
+import { Loader } from '@googlemaps/js-api-loader'
 
-const mapCenter = { lat: 20.91592625, lng: -156.3812449 } 
-const panorama = new google.maps.StreetViewPanorama(
-    document.getElementById('pano-0')
-)
-const panoramaOrientation = 'LEFT'
-const adjacentPanorama1 = new google.maps.StreetViewPanorama(
-    document.getElementById('pano-1')
-)
-const adjacentPanorama2 = new google.maps.StreetViewPanorama(
-    document.getElementById('pano-2')
-)
+const mapCenterPoint = { lat: 40.6962047, lng: -73.9681279 } 
+const activePanoramaPoint = { lat: 40.69603065823674, lng: -73.96814175806489 }
 
-function processSVData(data, status) {
-  if (status === 'OK') {
-    const location = data.location
-    panorama.setPano(location.pano)
-    panorama.setPov({
-      heading: 270,
-      pitch: 0,
-    })
-  } else {
-    console.error('Street View data not found for this location.')
-}
-
-const sv = new google.maps.StreetViewService()
-sv.getPanorama({ location: origin, radius: 50 }, processSVData)
-
-const adjacentStreetViewPanoramas = new AdjacentStreetViewPanoramas(
-    mapCenter, 
-    panorama, 
-    panoramaOrientation,
-    [adjacentPanorama1, adjacentPanorama2]
-)
-adjacentStreetViewPanoramas
-    .configureAdjacentPanoramas()
-    .then((data) => console.log(data))
-    .error((e) => console.error(e))
+const loader = new Loader({
+        apiKey: 'your api key'
+        version: 'beta' // must use beta version as library uses promises
+      })
+      loader
+      .load()
+      .then(() => {
+        const adjacentStreetViewPanoramas = new AdjacentStreetViewPanoramas(
+          mapCenterPoint, 
+          activePanoramaPoint, 
+        )
+        adjacentStreetViewPanoramas
+          .getLocations()
+          .then((data) => console.log(data))
+          .error((e) => console.error(e))
+      })
 ```
 
 ## Todo 
